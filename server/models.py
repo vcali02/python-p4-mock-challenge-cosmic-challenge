@@ -15,6 +15,7 @@ convention = {
 metadata = MetaData(naming_convention=convention)
 
 db = SQLAlchemy(metadata=metadata)
+#cascade="all, delete.orphan" CHECK SYNTAX
 
 class Scientist(db.Model, SerializerMixin):
 
@@ -29,18 +30,18 @@ class Scientist(db.Model, SerializerMixin):
 
     #RELATIONSHIPS
     #A Scientist has many Missions
-    missions_of_cur_scientist = db.relationship( "Mission", back_populates= "scientists")
+    missions_of_cur_scientist = db.relationship( "Mission", back_populates= "scientist")
 
     #ASSOCIATION_PROXY
     #A Scientist has many Planets through Missions
-    planets_of_cur_scientist = association_proxy("missions_of_cur_scientist", "planets")
+    planets_of_cur_scientist = association_proxy("missions_of_cur_scientist", "planet")
 
 
     #SERIALIZE RULES
     serialize_rules= (
-        "-missions_of_cur_scientist.scientists", 
+        "-missions_of_cur_scientist.scientist", 
         "-planets_of_cur_scientist.scientists_of_cur_planet", 
-        "-missions_of_cur_scientist.planets",
+        "-missions_of_cur_scientist.planet",
         "-created_at",
         "-updated_at"
         )
@@ -54,6 +55,9 @@ class Scientist(db.Model, SerializerMixin):
     def validate_name(self, key, name):
         if not name:
             raise ValueError("Must have a name.")
+        names = db.session.query(Scientist.name).all()
+        if name in names:
+            raise ValueError("Scientist needs unique name.")
         return name
     
     #Must have a field_of_study
@@ -80,16 +84,19 @@ class Planet(db.Model, SerializerMixin):
 
     #RELATIONSHIPS
     #A Planet has many Missions
-    missions_of_cur_planet = db.relationship("Mission", back_populates= "planets")
+    missions_of_cur_planet = db.relationship("Mission", back_populates= "planet")
 
     #ASSOCIATION_PROXY
     #A Planet has many Scientists through Missions
     #association_proxy('relationship to intermediary', 'relationship from intermediary to target')
-    scientists_of_cur_planet = association_proxy("missions_of_cur_planet", "scientists")
+    scientists_of_cur_planet = association_proxy("missions_of_cur_planet", "scientist")
 
 
     #SERIALIZE RULES
-    serialize_rules = ("-missions_of_cur_planet.planets", "-scientists_of_cur_planet.planets")
+    serialize_rules = (
+        "-missions_of_cur_planet.planet", 
+        "-scientists_of_cur_planet.planet"
+        )
 
     
 
@@ -113,15 +120,18 @@ class Mission(db.Model, SerializerMixin):
 
 
     #RELATIONSHIPS
-    scientists = db.relationship("Scientist", back_populates= "missions_of_cur_scientist")
-    #missions_of_cur_scientist = db.relationship( Mission, back_populates= "scientists")
+    scientist = db.relationship("Scientist", back_populates= "missions_of_cur_scientist")
+    #missions_of_cur_scientist = db.relationship( Mission, back_populates= "scientist")
 
-    planets = db.relationship("Planet", back_populates = "missions_of_cur_planet")
+    planet = db.relationship("Planet", back_populates = "missions_of_cur_planet")
     #missions_of_cur_planet = db.relationship("Mission", back_populates= "planet")
 
 
     #SERIALIZE RULES
-    serialize_rules = ("-planets.missions_of_cur_scientist", "-planets.missions_of_cur_planet")
+    serialize_rules = (
+        "-planet.missions_of_cur_scientist", 
+        "-planet.missions_of_cur_planet"
+        )
 
     
 
